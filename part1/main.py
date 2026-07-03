@@ -1,10 +1,11 @@
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 import os
 
 #Assign the dataset and create a output file to store cleaned and processed dataset
-FILE_PATH = "part1/data/phishing.csv"
+FILE_PATH = "part1/data/CEAS_08.csv"
 OUTPUT_DIR = "part1/output"
 
 #load the data from the file
@@ -53,14 +54,16 @@ def remove_duplicates(df):
 #handling missing/NaN values
 def handle_missing_values(df):
     for column in df.columns:
-        missing_count = df[column].isnull().sum()
-        missing_percentage = (missing_count / len(df)) * 100
-        if pd.api.types.is_numeric_dtype(df[column]) and 0 < missing_percentage < 20:
-            df[column] = df[column].fillna(df[column].median())
-            print(f"Filled missing values in {column} using median.")
-        elif missing_percentage > 20:
-            print(f"\nWarning!!! {column} has {missing_percentage:.2f}% missing values")
-    print("\nRemaining missing values:")
+        missing_percentage = (df[column].isnull().sum() / len(df)) * 100
+        if pd.api.types.is_numeric_dtype(df[column]):
+            if 0 < missing_percentage < 20:
+                df[column].fillna(df[column].median(), inplace=True)
+        else:
+            if 0 < missing_percentage < 20:
+                df[column].fillna(df[column].mode()[0], inplace=True)
+                print(f"Filled missing values in {column} using mode.")
+        if missing_percentage > 20:
+            print(f"Warning: {column} has {missing_percentage:.2f}% missing values")
     print(df.isnull().sum())
     return df
 
@@ -68,13 +71,26 @@ def handle_missing_values(df):
 def correct_data_types(df):
     memory_before = df.memory_usage(deep = True).sum()
     print(f"Memory before optimization: {memory_before} bytes")
-    categorical_columns = ["class"]
+    categorical_columns = ["sender","receiver","label"]
     for column in categorical_columns:
         df[column] = df[column].astype("category")
     memory_after = df.memory_usage(deep = True).sum()
     print(f"Memory after optimization: {memory_after} bytes")
     memory_saved = memory_before - memory_after
     print(f"Memory saved: {memory_saved} bytes")
+    return df
+
+def feature_engineering(df):
+    df["subject_length"] = df["subject"].fillna("").str.len()
+    df["body_length"] = df["body"].fillna("").str.len()
+    df["word_count"] = df["body"].str.split().str.len()
+    df["url_count"] = df["urls"]
+    df["uppercase_count"] = df["body"].str.count(r"[A-Z]")
+    df["special_characters"] = df["body"].str.count(r"[^A-Za-z0-9\s]")
+    df["question_marks"] = df["body"].str.count(r"\?")
+    df["exclamation_marks"] = df["body"].str.count("!")
+    df["contains_http"] = (df["body"].str.contains("http", case=False).astype(int))
+    print(df[["subject_length","body_length","word_count","uppercase_count","special_characters"]].head())
     return df
 
 #calculate skewness, most_skewed_column and mean, median comparison
@@ -132,36 +148,34 @@ def detect_outliers(df, column):
     }
 
 #using different functions for each graph
-def create_visualizations(df, most_skewed_column):
+def create_visualizations(df, histogram_column):
     plot_line(df)
     plot_bar(df)
-    plot_histogram(df, most_skewed_column)
+    plot_histogram(df, histogram_column)
     plot_scatter(df)
     plot_box(df)    
     return df
 
-#Line chart with Index and Website Traffic Average
+#Line chart with Index and body length
 def plot_line(df):
-    line_chart_df = df.head(200)
-    rolling_mean = line_chart_df["WebsiteTraffic"].rolling(window = 10, min_periods = 1).mean()
     plt.figure(figsize=(10,5))
-    plt.plot(line_chart_df["Index"], rolling_mean)
-    plt.title("Rolling Average of Website Traffic")
-    plt.xlabel("Index")
-    plt.ylabel("Rolling Average")
+    plt.plot(df.index[:200],df["body_length"][:200])
+    plt.title("Email word counts")
+    plt.xlabel("Email Index")
+    plt.ylabel("Word count")
     plt.grid(True)
     plt.tight_layout()
     plt.savefig(f"{OUTPUT_DIR}/line_plot.png")
     plt.show()
 
-#bar chart with Website Traffic and class columns
+#bar chart with body_lenght and label columns
 def plot_bar(df):
-    grouped_data = (df.groupby("class")["WebsiteTraffic"].mean())
+    grouped_data = (df.groupby("label")["body_length"].mean())
     plt.figure(figsize=(6,5))
     grouped_data.plot(kind = "bar", rot = 0)
-    plt.title("Average website traffic by class")
-    plt.xlabel("Class")
-    plt.ylabel("Average Website Traffic")
+    plt.title("Average body length by label")
+    plt.xlabel("Label")
+    plt.ylabel("Average body length")
     plt.tight_layout()
     plt.savefig(f"{OUTPUT_DIR}/bar_chart.png")
     plt.show()
@@ -177,26 +191,27 @@ def plot_histogram(df, column):
     plt.savefig(f"{OUTPUT_DIR}/histogram.png")
     plt.show()
 
-#scatter plot with Website Traffic and PageRank
+#scatter plot with Email body length and word count
 def plot_scatter(df):
     plt.figure(figsize=(8,6))
-    sns.scatterplot(data=df,x="WebsiteTraffic",y="PageRank")
-    plt.title("Website Traffic vs PageRank")
+    sns.scatterplot(data=df,x="body_length",y="word_count")
+    plt.title("Body length vs word count")
     plt.tight_layout()
     plt.savefig(f"{OUTPUT_DIR}/scatter_plot.png")    
     plt.show()
 
-#box chart with class and Website Traffic
+#box chart with label and body_length
 def plot_box(df):
     plt.figure(figsize=(7,5))
-    sns.boxplot(data=df,x="class",y="WebsiteTraffic")
-    plt.title("Website Traffic by class")
+    sns.boxplot(data=df,x="label",y="body_length")
+    plt.title("Body Length by label")
     plt.tight_layout()
     plt.savefig(f"{OUTPUT_DIR}/box_plot.png")
     plt.show()
 
 #correlation analsyis - pearson and spearman and creating heatmap
 def correlation_analysis(df):
+    df.drop(columns=["url_count"], inplace=True)
     numeric_df = df.select_dtypes(include = ["number"])
     pearson = numeric_df.corr()
     spearman = numeric_df.corr(method = "spearman")
@@ -220,10 +235,9 @@ def correlation_analysis(df):
         "spearman": spearman
     }
 
-
 def grouped_aggregation(df):
     print("\n===== Grouped Aggregation =====")
-    grouped = (df.groupby("class")["WebsiteTraffic"].agg(["mean","std","count"]))
+    grouped = (df.groupby("label")["body_length"].agg(["mean","std","count"]))
     lowest_mean = grouped["mean"].min()
     if lowest_mean <= 0:
         print("Ratio can't be computed because minimum group mean is zero or negative.")
@@ -236,9 +250,11 @@ def grouped_aggregation(df):
 #find the top correlation differences between pearson and spearman methods
 def compare_correlations(pearson, spearman):
     difference = (spearman - pearson).abs()
-    difference = difference.where(~difference.index.to_series().apply(lambda x: difference.columns == x), 0)
-    print("\nTop correlation differences: ")
-    print(difference.stack().sort_values(ascending = False).head(3))
+    # Remove diagonal (self-correlation)
+    for column in difference.columns:
+        difference.loc[column, column] = 0
+    print("\n===== Top 3 Correlation Differences =====")
+    print(difference.stack().sort_values(ascending=False).head(3))
     return difference
 
 #save the modified, cleaned datset in separate file
@@ -258,15 +274,13 @@ def main():
     df = remove_duplicates(df)
     df = handle_missing_values(df)
     df = correct_data_types(df)
+    df = feature_engineering(df)
     stats = descriptive_statistics(df)
-    detect_outliers(df, "LongURL")
-    detect_outliers(df, "PageRank")
+    detect_outliers(df, "body_length")
+    detect_outliers(df, "word_count")
     create_visualizations(df, stats["most_skewed_column"])
     correlation_results = correlation_analysis(df)
-    compare_correlations(
-        correlation_results["pearson"],
-        correlation_results["spearman"]
-    )
+    compare_correlations(correlation_results["pearson"],correlation_results["spearman"]    )
     grouped_aggregation(df)
     save_cleaned_data(df)
 
