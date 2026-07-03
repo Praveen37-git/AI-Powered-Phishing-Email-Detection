@@ -129,6 +129,10 @@ def ridge_regression_model(X_train_scaled, X_test_scaled, y_train_reg, y_test_re
     return ridge_model, ridge_mse, ridge_r2
 
 def logistic_regression_model(X_train_scaled, X_test_scaled, y_train_clf, y_test_clf, class_weight):
+    """
+    Train the Logistic Regression model with classification samples
+    Calculate the metric and plot the ROC curve
+    """
     log_reg = LogisticRegression(class_weight=class_weight, max_iter=1000, random_state=42)
     log_reg.fit(X_train_scaled, y_train_clf)
     y_pred = log_reg.predict(X_test_scaled)
@@ -159,6 +163,25 @@ def logistic_regression_model(X_train_scaled, X_test_scaled, y_train_clf, y_test
     plt.show()
     
     return log_reg, y_prob, y_prob_positive, auc_score
+
+def threshold_sensitivity_analysis(y_test_clf, y_prob_positive):
+    thresholds = np.arange(0.30,0.71,0.10)
+    results = []
+    for th in thresholds:
+        y_pred = (y_prob_positive >= th).astype(int)
+        precision = precision_score(y_test_clf,y_pred)
+        recall = recall_score(y_test_clf,y_pred)
+        f1 = f1_score(y_test_clf,y_pred)
+        results.append({"Threshold": th, "Precision": precision, "Recall": recall, "F1": f1})
+    results_df = pd.DataFrame(results)
+    print("===== Decision-Threshold Sensitivity Table =====")
+    print(results_df.to_string(index=False, float_format=lambda x: f"{x:.4f}"))
+    max_f1 = results_df[["F1"]].idxmax()
+    max_f1_row = results_df.loc[max_f1]
+    print("\n===== Best Threshold details =====")
+    print(f"Best Threshold: {max_f1_row["Threshold"]:.2f}")
+    print(f"Max F1 score: {max_f1_row["F1"]:.4f}")
+    return results_df
 
 def main():
     os.makedirs("part2/output",exist_ok=True)
@@ -200,8 +223,10 @@ def main():
         class_weight = "balanced"
     else:
         class_weight = None
-    log_reg,y_prob, y_prob_positive, auc_score = logistic_regression_model(X_train_scaled,X_test_scaled,y_train_clf,y_test_clf,class_weight)
+    log_reg, y_prob, y_prob_positive, auc_score = logistic_regression_model(X_train_scaled,X_test_scaled,y_train_clf,y_test_clf,class_weight)
     joblib.dump(log_reg, f"{OUTPUT_DIR}/logistic_regression.pkl")
+    results = threshold_sensitivity_analysis(y_test_clf, y_prob_positive)
+    results.to_csv(f"{OUTPUT_DIR}/threshold_sensitivity.csv", index = False)
     
 
 if __name__ == "__main__":
