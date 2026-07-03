@@ -80,6 +80,7 @@ def correct_data_types(df):
     print(f"Memory saved: {memory_saved} bytes")
     return df
 
+#adding additional features to the dataset
 def feature_engineering(df):
     df["subject_length"] = df["subject"].fillna("").str.len()
     df["body_length"] = df["body"].fillna("").str.len()
