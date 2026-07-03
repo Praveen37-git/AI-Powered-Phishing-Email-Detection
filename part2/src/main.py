@@ -176,11 +176,11 @@ def threshold_sensitivity_analysis(y_test_clf, y_prob_positive):
     results_df = pd.DataFrame(results)
     print("===== Decision-Threshold Sensitivity Table =====")
     print(results_df.to_string(index=False, float_format=lambda x: f"{x:.4f}"))
-    max_f1 = results_df[["F1"]].idxmax()
+    max_f1 = results_df["F1"].idxmax()
     max_f1_row = results_df.loc[max_f1]
     print("\n===== Best Threshold details =====")
-    print(f"Best Threshold: {max_f1_row["Threshold"]:.2f}")
-    print(f"Max F1 score: {max_f1_row["F1"]:.4f}")
+    print(f"Best Threshold: {max_f1_row['Threshold']:.2f}")
+    print(f"Max F1 score: {max_f1_row['F1']:.4f}")
     return results_df
 
 def main():
