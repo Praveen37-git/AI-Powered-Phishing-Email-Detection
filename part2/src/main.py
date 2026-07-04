@@ -138,12 +138,15 @@ def logistic_regression_model(X_train_scaled, X_test_scaled, y_train_clf, y_test
     y_pred = log_reg.predict(X_test_scaled)
     y_prob = log_reg.predict_proba(X_test_scaled)
     y_prob_positive = y_prob[:,1]
+    acc_score = accuracy_score(y_test_clf,y_pred)
+    prec_score = precision_score(y_test_clf,y_pred)
+    recall = recall_score(y_test_clf,y_pred)
     print("\n===== Classification evaluation metrics =====")
     print("===== Confusion Matrix =====")
     print(confusion_matrix(y_test_clf, y_pred))
-    print(f"Accuracy: {accuracy_score(y_test_clf,y_pred):.4f}")
-    print(f"Precision: {precision_score(y_test_clf,y_pred):.4f}")
-    print(f"Recall: {recall_score(y_test_clf,y_pred):.4f}")
+    print(f"Accuracy: {acc_score:.4f}")
+    print(f"Precision: {prec_score:.4f}")
+    print(f"Recall: {recall:.4f}")
     print(f"F1 score: {f1_score(y_test_clf,y_pred):.4f}")
     print("===== Classification Report =====")
     print(classification_report(y_test_clf,y_pred))
@@ -162,7 +165,7 @@ def logistic_regression_model(X_train_scaled, X_test_scaled, y_train_clf, y_test
     plt.savefig(f"{OUTPUT_DIR}/roc_curve.png")
     plt.show()
     
-    return log_reg, y_prob, y_prob_positive, auc_score
+    return log_reg, y_prob, y_prob_positive, auc_score, prec_score, recall
 
 def threshold_sensitivity_analysis(y_test_clf, y_prob_positive):
     thresholds = np.arange(0.30,0.71,0.10)
@@ -182,6 +185,57 @@ def threshold_sensitivity_analysis(y_test_clf, y_prob_positive):
     print(f"Best Threshold: {max_f1_row['Threshold']:.2f}")
     print(f"Max F1 score: {max_f1_row['F1']:.4f}")
     return results_df
+
+def logistic_regression_regularization(X_train_scaled, X_test_scaled, y_train_clf, y_test_clf, class_weight):
+    """
+    Train a second logistic regression with C=0.01
+    Calculate the metrics and compare it with the baseline model
+    """
+    log_model = LogisticRegression(C=0.01,class_weight=class_weight,max_iter=1000,random_state=42)
+    log_model.fit(X_train_scaled, y_train_clf)
+    y_pred = log_model.predict(X_test_scaled)
+    y_prob = log_model.predict_proba(X_test_scaled)[:,1]
+    print("\n===== Classification evaluation metrics =====")
+    print("===== Confusion Matrix =====")
+    print(confusion_matrix(y_test_clf, y_pred))
+    acc_score = accuracy_score(y_test_clf,y_pred)
+    prec_score = precision_score(y_test_clf,y_pred)
+    recall = recall_score(y_test_clf,y_pred)
+    print(f"Accuracy: {acc_score:.4f}")
+    print(f"Precision: {prec_score:.4f}")
+    print(f"Recall: {recall:.4f}")
+    print("===== Classification Report =====")
+    print(classification_report(y_test_clf,y_pred))
+    print("===== Area under curve (AUC) =====")
+    auc_score = roc_auc_score(y_test_clf, y_prob)
+    print(f"ROC-AUC score: {auc_score:.4f}")
+    return log_model,prec_score,recall,auc_score,y_prob
+
+def bootstrap_auc_difference(y_test_clf,baseline_prob,regularized_prob):
+    auc_differences = []
+    for i in range(500):
+        indices = np.random.choice(len(y_test_clf),size=len(y_test_clf),replace=True)
+        bootstrap_y_test_clf = y_test_clf.iloc[indices]
+        bootstrap_baseline_prob = baseline_prob[indices]
+        bootstrap_regularized_prob = regularized_prob[indices]
+        if len(np.unique(bootstrap_y_test_clf)) < 2:
+            continue
+        roc_auc_baseline = roc_auc_score(bootstrap_y_test_clf, bootstrap_baseline_prob)
+        roc_auc_regularized = roc_auc_score(bootstrap_y_test_clf, bootstrap_regularized_prob)
+        difference = roc_auc_baseline - roc_auc_regularized
+        auc_differences.append(difference)
+    auc_differences = np.array(auc_differences)
+    mean = np.mean(auc_differences)
+    lower_bound = np.percentile(auc_differences,2.5)
+    upper_bound = np.percentile(auc_differences,97.5)
+    print("====== Bootstrap AUC differences ======")
+    print(f"Mean AUC difference: {mean:.4f}")
+    print(f"95% CI Lower bound: {lower_bound:.4f}")
+    print(f"95% CI Upper bound: {upper_bound:.4f}")
+    if lower_bound > 0 or upper_bound < 0:
+        print("95 percent confidence interval excludes zero.")
+    else:
+        print("95 percent interval includes zero.")
 
 def main():
     os.makedirs("part2/output",exist_ok=True)
@@ -223,10 +277,16 @@ def main():
         class_weight = "balanced"
     else:
         class_weight = None
-    log_reg, y_prob, y_prob_positive, auc_score = logistic_regression_model(X_train_scaled,X_test_scaled,y_train_clf,y_test_clf,class_weight)
+    log_reg, y_prob, y_prob_positive, log_auc, log_precision, log_recall = logistic_regression_model(X_train_scaled,X_test_scaled,y_train_clf,y_test_clf,class_weight)
     joblib.dump(log_reg, f"{OUTPUT_DIR}/logistic_regression.pkl")
     results = threshold_sensitivity_analysis(y_test_clf, y_prob_positive)
     results.to_csv(f"{OUTPUT_DIR}/threshold_sensitivity.csv", index = False)
+    reg_model,reg_precision,reg_recall,reg_auc,reg_prob_positive = logistic_regression_regularization(X_train_scaled,X_test_scaled,y_train_clf,y_test_clf,class_weight)
+    comparison = pd.DataFrame({"Model": ["Logistic Regression (C=1.0)","Logistic Regression (C=0.01)"], "Precision": [log_precision, reg_precision],"Recall": [log_recall, reg_recall], "AUC": [log_auc, reg_auc]})
+    print(comparison.to_string(index=False))
+    comparison.to_csv(f"{OUTPUT_DIR}/regularization_comparison.csv",index=False)
+    joblib.dump(reg_model, f"{OUTPUT_DIR}/logistic_regression_C001.pkl")
+    bootstrap_auc_difference(y_test_clf, y_prob_positive, reg_prob_positive)
     
 
 if __name__ == "__main__":
