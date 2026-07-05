@@ -83,7 +83,7 @@ def scale_data(X_train,X_test):
     scaler = StandardScaler()
     X_train_scaled = scaler.fit_transform(X_train)
     X_test_scaled = scaler.transform(X_test)
-    joblib.dump(scaler, "part2/output/scaler.pkl")
+    joblib.dump(scaler, f"{OUTPUT_DIR}/scaler.pkl")
     return X_train_scaled, X_test_scaled
 
 def check_class_balance(y_train_clf):
