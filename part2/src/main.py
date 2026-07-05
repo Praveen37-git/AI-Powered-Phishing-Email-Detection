@@ -43,6 +43,11 @@ def feature_target_definition(df):
     create categorical feature email domain
     """  
     df["sender_domain"] = (df["sender"].str.extract(r'@([^>]+)',expand=False).fillna("unknown"))  
+    top_domains = df["sender_domain"].value_counts().nlargest(20).index
+    df["sender_domain"] = df["sender_domain"].where(
+        df["sender_domain"].isin(top_domains),
+        "other"
+    )
     X = df[[
         "sender_domain",
         "urls",
@@ -250,8 +255,13 @@ def main():
     print(f"\nX: {X.shape}")
     print(f"\ny_reg: {y_reg.shape}")
     print(f"\ny_clf: {y_clf.shape}")
-    X_train,X_test,y_train_reg,y_test_reg,y_train_clf,y_test_clf = split_data(X,y_reg,y_clf)
-    X_train_scaled, X_test_scaled = scale_data(X_train,X_test)
+    print("Splitting data...")
+    X_train, X_test, y_train_reg, y_test_reg, y_train_clf, y_test_clf = split_data(X, y_reg, y_clf)
+
+    print("Scaling data...")
+    X_train_scaled, X_test_scaled = scale_data(X_train, X_test)
+
+    print("Finished scaling")
     print(f"\nTraining samples: {X_train.shape[0]}")
     print(f"\nTest samples: {X_test.shape[0]}")
     print(f"\nTraining features: {X_train.shape[1]}")
@@ -265,6 +275,7 @@ def main():
     print(f"\nTotal features after encoding: {X.shape[1]}")
     print("\nFirst 20 features:")
     print(X.columns[:20].tolist())
+    
     lr_model, lr_mse, lr_r2= linear_regression_model(X_train_scaled,X_test_scaled,y_train_reg,y_test_reg,feature_names)
     ridge_model, ridge_mse, ridge_r2 = ridge_regression_model(X_train_scaled,X_test_scaled,y_train_reg,y_test_reg,feature_names)
     joblib.dump(lr_model, f"{OUTPUT_DIR}/linear_regression.pkl")
