@@ -1,29 +1,67 @@
 # Part 2 – Supervised Machine Learning
 
+## Objective
+Build and evaluate regression and classification models using the cleaned dataset from Part 1.
+
 ## Dataset
+- Input: `cleaned_data.csv`
+- Regression Target: `body_length`
+- Classification Target: `label` (0 = Legitimate, 1 = Phishing)
 
-The cleaned dataset (`cleaned_data.csv`) from Part 1 was used. It contains 11,054 records with numeric features. The classification target is `class` (`-1` = Legitimate, `1` = Phishing). For regression, `DomainRegLen` was used as the continuous target.
+## Preprocessing
+- Created `sender_domain` from the sender email.
+- Applied One-Hot Encoding to the categorical feature (`sender_domain`) with `drop_first=True`.
+- Split the dataset into 80% training and 20% testing.
+- Applied `StandardScaler` by fitting only on the training data to prevent data leakage.
 
-## Features and Preprocessing
+## Regression Models
+- Linear Regression
+- Ridge Regression (`alpha=1.0`)
 
-* **Feature Matrix (X):** All columns except `DomainRegLen` and `class`.
-* **Regression Target (y_reg):** `DomainRegLen`
-* **Classification Target (y_clf):** `class` (converted to 0/1).
+**Evaluation Metrics**
+- Mean Squared Error (MSE)
+- R² Score
+- Feature coefficients
+- Top 3 important features
 
-The dataset contains only numeric columns, so no label encoding or one-hot encoding was required.
+## Classification Model
+- Logistic Regression (`max_iter=1000`)
+- Used `class_weight="balanced"` if class imbalance was detected.
 
-The data was split into 80% training and 20% testing sets using `random_state=42`. `StandardScaler` was fitted only on the training data to prevent data leakage.
+**Evaluation Metrics**
+- Confusion Matrix
+- Accuracy
+- Precision
+- Recall
+- F1-Score
+- ROC Curve
+- AUC Score
 
-## Regression
+## Threshold Sensitivity
+Evaluated thresholds from **0.30 to 0.70** and compared:
+- Precision
+- Recall
+- F1-Score
 
-Linear Regression and Ridge Regression (`alpha=1.0`) were trained and evaluated using Mean Squared Error (MSE) and R² score. Model coefficients were examined, and the three features with the largest absolute coefficients were identified. Ridge Regression was compared with Linear Regression to observe the effect of L2 regularization.
+The threshold with the highest F1-score was identified.
 
-## Classification
+## Regularization
+Compared:
+- Logistic Regression (`C=1.0`)
+- Logistic Regression (`C=0.01`)
 
-Logistic Regression (`max_iter=1000`) was trained to classify phishing websites. Class imbalance was checked and handled if necessary. Model performance was evaluated using a confusion matrix, accuracy, precision, recall, F1-score, ROC curve, and AUC.
-
-Decision thresholds from **0.30 to 0.70** were tested to compare precision, recall, and F1-score. A second Logistic Regression model (`C=0.01`) was trained to study the effect of stronger regularization.
+Compared Precision, Recall and AUC.
 
 ## Bootstrap Analysis
+Performed **500 bootstrap samples** to estimate the confidence interval of the AUC difference between the two logistic regression models.
 
-A bootstrap experiment with **500 samples** was performed to estimate the 95% confidence interval of the AUC difference between the two Logistic Regression models. The results were used to determine whether the performance difference was statistically reliable.
+## Output Files
+- `linear_regression.pkl`
+- `ridge_regression.pkl`
+- `logistic_regression.pkl`
+- `logistic_regression_C001.pkl`
+- `scaler.pkl`
+- `roc_curve.png`
+- `regression_comparison.csv`
+- `regularization_comparison.csv`
+- `threshold_sensitivity.csv`
