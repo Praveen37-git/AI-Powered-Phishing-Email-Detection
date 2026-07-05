@@ -156,6 +156,49 @@ def random_forest_classifier(X_train_scaled,X_test_scaled,y_train_clf,y_test_clf
     print(importance_df.head(5).to_string(index=False))
     return rf_model, train_acc_score, test_acc_score, auc_score, importance_df
 
+def gradient_boosting_classifier(X_train_scaled,X_test_scaled,y_train_clf,y_test_clf):
+    """
+    Train a Gradient Boosting classifier and
+    calculate training, test accuracy and ROC_AUC
+    """
+    gb_model = GradientBoostingClassifier(n_estimators=100, learning_rate=0.1, max_depth=3, random_state=42)
+    gb_model.fit(X_train_scaled, y_train_clf)
+    y_pred_train = gb_model.predict(X_train_scaled)
+    y_pred_test = gb_model.predict(X_test_scaled)
+    y_prob = gb_model.predict_proba(X_test_scaled)[:,1]
+    train_acc_score = accuracy_score(y_train_clf, y_pred_train)
+    test_acc_score = accuracy_score(y_test_clf, y_pred_test)
+    auc_score = roc_auc_score(y_test_clf, y_prob)
+    print("\n ====== Gradient Boosting Classifier ======")
+    print(f"Train Accuracy: {train_acc_score:.4f}")
+    print(f"Test Accuracy: {test_acc_score:.4f}")
+    print(f"ROC-AUC score: {auc_score:.4f}")
+    return gb_model, train_acc_score, test_acc_score, auc_score
+
+def feature_ablation_study(X_train, X_test, y_train_clf, y_test_clf, importance_df):
+    """
+    Remove the 5 least important features and 
+    compare Random Forest performance
+    """
+    least_features = importance_df.sort_values(by="Importance", ascending=True).head(5)["Feature"].tolist()
+    print("\n====== Least Important Features ======")
+    print(least_features)
+    #Remove features
+    X_train_reduced = X_train.drop(columns = least_features)
+    X_test_reduced = X_test.drop(columns = least_features)
+    #scale the reduced datset
+    scaler = StandardScaler()
+    X_train_scaled = scaler.fit_transform(X_train_reduced)
+    X_test_scaled = scaler.transform(X_test_reduced)
+
+    rf_reduced = RandomForestClassifier(n_estimators=100, max_depth=10, random_state=42)
+    rf_reduced.fit(X_train_scaled, y_train_clf)
+    y_prob = rf_reduced.predict_proba(X_test_scaled)[:, 1]
+    reduced_auc = roc_auc_score(y_test_clf, y_prob)
+    return rf_reduced, reduced_auc, least_features
+
+
+
 def main():
     os.makedirs("part3/output",exist_ok=True)
     df = load_data()
@@ -190,6 +233,19 @@ def main():
     rf_model, rf_train_acc, rf_test_acc, rf_auc, importance_df = random_forest_classifier(X_train_scaled, X_test_scaled, y_train_clf, y_test_clf, feature_names)
     joblib.dump(rf_model, f"{OUTPUT_DIR}/random_forest.pkl")
     importance_df.to_csv(f"{OUTPUT_DIR}/random_forest_feature_importance.csv", index=False)
+    gb_model, gb_train_acc, gb_test_acc, gb_auc = gradient_boosting_classifier(X_train_scaled,X_test_scaled,y_train_clf,y_test_clf)
+    joblib.dump(gb_model, f"{OUTPUT_DIR}/gradient_boosting_classifier.pkl")
+    print("\n")
+    gb_comparison = pd.DataFrame({"Model": ["Gradient Boosting Classifier"], "Train Accuracy": [gb_train_acc], "Test Accuracy": [gb_test_acc], "ROC-AUC": [gb_auc]})
+    gb_comparison.to_csv(f"{OUTPUT_DIR}/gradient_boosting_results.csv", index=False)
+    print(gb_comparison.to_string(index=False))
+    #unsclaed data is passed as the function scales reduced dataset after dropping the features
+    rf_reduced, reduced_auc, least_features = feature_ablation_study(X_train, X_test, y_train_clf, y_test_clf, importance_df)
+    ablation_comparison = pd.DataFrame({"Model": ["Full Random Forest", "Reduced Random Forest"], "ROC-AUC": [rf_auc, reduced_auc]})
+    print("\n ====== Feature Ablation comparison ======")
+    print(ablation_comparison.to_string(index=False))
+    ablation_comparison.to_csv(f"{OUTPUT_DIR}/feature_ablation_comparison.csv")
+    joblib.dump(rf_reduced, f"{OUTPUT_DIR}/random_forest_reduced.pkl")
 
 if __name__ == "__main__":
     main()

@@ -1,0 +1,3 @@
+,Model,ROC-AUC
+0,Full Random Forest,0.9965341921756126
+1,Reduced Random Forest,0.9967712755920838
