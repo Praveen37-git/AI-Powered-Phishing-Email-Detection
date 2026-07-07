@@ -1,10 +1,13 @@
 import pandas as pd
 import os
 import joblib
-from sklearn.model_selection import train_test_split
+from sklearn.model_selection import train_test_split, cross_val_score, StratifiedKFold, GridSearchCV
 from sklearn.preprocessing import StandardScaler
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
+from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import make_pipeline
+from sklearn.impute import SimpleImputer
 from sklearn.metrics import accuracy_score, roc_auc_score
 
 
@@ -197,6 +200,47 @@ def feature_ablation_study(X_train, X_test, y_train_clf, y_test_clf, importance_
     reduced_auc = roc_auc_score(y_test_clf, y_prob)
     return rf_reduced, reduced_auc, least_features
 
+def cross_validation_comparison(X, y_clf):
+    """
+    compare different classification models using
+    5-fold Stratified Cross Validation
+    """
+    cv = StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    models = {"Logistic Regression": LogisticRegression(class_weight="balanced", max_iter= 5000, random_state=42),
+              "Controlled Decision Tree": DecisionTreeClassifier(max_depth=5, min_samples_split=20, random_state=42),
+              "Random Forest": RandomForestClassifier(n_estimators=100, max_depth=10, random_state=42),
+              "Gradient Boosting": GradientBoostingClassifier(n_estimators=100, learning_rate=0.1, max_depth=3, random_state=42)}
+    results = []
+    print("\n====== 5-fold cross validation ======")
+    for name,model in models.items():
+        score = cross_val_score(model, X, y_clf, cv=cv,scoring="roc_auc",n_jobs=-1)
+        print(f"{name}")
+        print(f"Mean AUC: {score.mean():.4f}")
+        print(f"Std AUC: {score.std():.4f}\n")
+        results.append({"Model": name, "Mean AUC": score.mean(), "Std AUC": score.std()})
+    comparison_df = pd.DataFrame(results)
+    print(comparison_df.to_string(index=False))
+    comparison_df.to_csv(f"{OUTPUT_DIR}/cross_validation_results.csv", index=False)
+    return comparison_df
+
+def random_forest_grid_search(X_train, y_train_clf):
+    """
+    Tune the Random forest using GridSearchCV
+    """
+    pipeline = make_pipeline(SimpleImputer(strategy="median"), StandardScaler(), RandomForestClassifier(random_state=42))
+    param_grid = {
+    'randomforestclassifier__n_estimators': [50, 100, 200],
+    'randomforestclassifier__max_depth': [5, 10, None],
+    'randomforestclassifier__min_samples_leaf': [1, 5]
+    }
+    cv=StratifiedKFold(n_splits=5, shuffle=True, random_state=42)
+    grid = GridSearchCV(estimator=pipeline, param_grid=param_grid, cv=cv, scoring="roc_auc", n_jobs=-1)
+    grid.fit(X_train, y_train_clf)
+    print("\n====== Grid Search Results ======")
+    print("Best parameters:")
+    print(grid.best_params_)
+    print(f"Best CV AUC: {grid.best_score_:.4f}")
+    return grid.best_estimator_, grid.best_params_, grid.best_score_
 
 
 def main():
@@ -246,6 +290,9 @@ def main():
     print(ablation_comparison.to_string(index=False))
     ablation_comparison.to_csv(f"{OUTPUT_DIR}/feature_ablation_comparison.csv")
     joblib.dump(rf_reduced, f"{OUTPUT_DIR}/random_forest_reduced.pkl")
+    cross_validation_comparison(X, y_clf)
+    best_pipeline, best_params, best_score = random_forest_grid_search(X_train,y_train_clf)
+    joblib.dump(best_pipeline, f"{OUTPUT_DIR}/best_model.pkl")
 
 if __name__ == "__main__":
     main()
