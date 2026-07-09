@@ -38,7 +38,7 @@ part4/
 ## Repository Setup
 
 ```bash
-git clone https://github.com/<your-github-username>/AI-Powered-Phishing-Detection.git
+git clone https://github.com/Praveen37-git/AI-Powered-Phishing-Email-Detection
 cd AI-Powered-Phishing-Detection
 pip install -r requirements.txt
 ```
