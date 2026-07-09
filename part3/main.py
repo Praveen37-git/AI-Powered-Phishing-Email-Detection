@@ -321,6 +321,7 @@ def main():
     dt_model_controlled, controlled_train_acc_score, controlled_test_acc_score = decision_tree_controlled(X_train_scaled,X_test_scaled,y_train_clf,y_test_clf)
     joblib.dump(dt_model_base, f"{OUTPUT_DIR}/decision_tree_baseline.pkl")
     joblib.dump(dt_model_controlled, f"{OUTPUT_DIR}/decision_tree_controlled.pkl")
+    joblib.dump(feature_names, f"{OUTPUT_DIR}/feature_names.pkl")
     baseline_gap = base_train_acc_score - base_test_acc_score
     controlled_gap = controlled_train_acc_score - controlled_test_acc_score
     print("\n====== Train Test Differences ======")
