@@ -242,6 +242,70 @@ def random_forest_grid_search(X_train, y_train_clf):
     print(f"Best CV AUC: {grid.best_score_:.4f}")
     return grid.best_estimator_, grid.best_params_, grid.best_score_
 
+def learning_curve_analysis(best_pipeline, X_train, X_test, y_train_clf, y_test_clf):
+    """
+    Train the best pipeline on progressively larger subsets of the training data and 
+    compute training and test ROC-AUC
+    """
+    fractions = [0.2, 0.4, 0.6, 0.8, 1.0]
+    results = []
+    for f in fractions:
+        n_samples = int(f*len(X_train))
+        X_subset = X_train.iloc[:n_samples]
+        y_subset = y_train_clf.iloc[:n_samples]
+        best_pipeline.fit(X_subset, y_subset)
+        train_prob = best_pipeline.predict_proba(X_subset)[:, 1]
+        test_prob = best_pipeline.predict_proba(X_test)[:, 1]
+        train_auc = roc_auc_score(y_subset, train_prob)
+        test_auc = roc_auc_score(y_test_clf, test_prob)
+        results.append({"Training Fraction": f, "Training AUC": train_auc, "Test AUC": test_auc})
+    learning_curve = pd.DataFrame(results)
+    print("\n====== Manual Learning Curve ======")
+    print(learning_curve.to_string(index=False))
+    learning_curve.to_csv(f"{OUTPUT_DIR}/learning_curve.csv", index=False)
+    return learning_curve
+        
+def reload_and_predict(feature_names):
+    """
+    Load the saved model and make predictions on two hand-crafted samples
+    """
+    model = joblib.load(f"{OUTPUT_DIR}/best_model.pkl")
+    sample_data = pd.DataFrame([
+        {
+            "urls": 0,
+            "subject_length": 18,
+            "word_count": 120,
+            "uppercase_count": 2,
+            "special_characters": 8,
+            "question_marks": 0,
+            "exclamation_marks": 0,
+            "contains_http": 0,
+            "sender_domain": "gmail.com"
+        },
+        {
+            "urls": 3,
+            "subject_length": 65,
+            "word_count": 250,
+            "uppercase_count": 40,
+            "special_characters": 35,
+            "question_marks": 2,
+            "exclamation_marks": 6,
+            "contains_http": 1,
+            "sender_domain": "other"
+        }
+    ])
+    #One-hot encode the sample data
+    sample_data = pd.get_dummies(sample_data, columns=["sender_domain"], drop_first=True)
+    #Match training features
+    sample_data = sample_data.reindex(columns=feature_names, fill_value=0)
+    pred = model.predict(sample_data)
+    prob = model.predict_proba(sample_data)
+    print("\n ====== Reloaded Model Predictions ======")
+    print(sample_data)
+    print("\nPredicted Class: ", pred)
+    print("\nPredicted Probabilities: ")
+    print(prob)
+    
 
 def main():
     os.makedirs("part3/output",exist_ok=True)
@@ -293,6 +357,8 @@ def main():
     cross_validation_comparison(X, y_clf)
     best_pipeline, best_params, best_score = random_forest_grid_search(X_train,y_train_clf)
     joblib.dump(best_pipeline, f"{OUTPUT_DIR}/best_model.pkl")
+    learning_curve = learning_curve_analysis(best_pipeline, X_train, X_test, y_train_clf, y_test_clf)
+    reload_and_predict(X_train.columns)
 
 if __name__ == "__main__":
     main()
