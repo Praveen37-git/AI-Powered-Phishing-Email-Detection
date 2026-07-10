@@ -1,3 +1,6 @@
-requests
+joblib
 jsonschema
+pandas
 python-dotenv
+requests
+scikit-learn

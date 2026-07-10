@@ -1,70 +1,25 @@
 # Part 1 – Data Cleaning and Exploratory Data Analysis
 
-## Dataset
+## Overview
 
-This project uses the **CEAS 2008 Spam Email Dataset** downloaded from Kaggle.
+This part focuses on loading the phishing email dataset, exploring the data, cleaning missing values, creating useful features, and visualizing the dataset.
 
-Download the dataset from:
-https://www.kaggle.com/datasets/naserabdullahalam/phishing-email-dataset
+## Tasks Completed
 
-Place the dataset in:
+- Loaded the phishing email dataset
+- Performed exploratory data analysis (EDA)
+- Handled missing values
+- Created email-based features
+- Generated visualizations:
+  - Histogram
+  - Bar chart
+  - Scatter plot
+  - Box plot
+  - Line chart
+  - Correlation heatmap
+- Saved the cleaned dataset for later parts
+- Saved the  plot and chart images
 
-```
-part1/data/CEAS_08.csv
-```
+## Conclusion
 
----
-
-## What was done
-
-- Loaded and explored the dataset.
-- Checked for missing values and duplicate records.
-- Filled missing values in `receiver` and `subject` using the mode.
-- Converted `sender`, `receiver`, and `label` to categorical data types to reduce memory usage.
-- Created new features from the email text:
-  - subject_length
-  - body_length
-  - word_count
-  - uppercase_count
-  - special_characters
-  - question_marks
-  - exclamation_marks
-  - contains_http
-- Removed the duplicate `url_count` feature before correlation analysis.
-- Detected outliers using the IQR method (kept all outliers since they represent valid email characteristics).
-- Generated descriptive statistics and skewness analysis.
-- Compared Pearson and Spearman correlations.
-- Performed grouped aggregation based on email labels.
-- Saved the cleaned dataset as `cleaned_data.csv`.
-
----
-
-## Visualizations
-
-The following plots are generated:
-
-- Line Plot
-- Bar Chart
-- Histogram
-- Scatter Plot
-- Box Plot
-- Correlation Heatmap
-
-All plots and the cleaned dataset are saved in the `output` folder.
-
----
-
-## Libraries Used
-
-- pandas
-- numpy
-- matplotlib
-- seaborn
-
----
-
-## Run
-
-```bash
-python main.py
-```
+The dataset was cleaned, explored, and prepared for machine learning. The processed dataset is used in Parts 2 and 3.
