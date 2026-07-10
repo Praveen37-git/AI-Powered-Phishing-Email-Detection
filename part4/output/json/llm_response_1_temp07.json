@@ -1,0 +1,7 @@
+{
+    "prediction_label": "Phishing",
+    "confidence_level": "High",
+    "top_reason": "The email contains multiple URLs (3) and includes HTTP links, which are common indicators in phishing attempts.",
+    "second_reason": "High counts of uppercase letters (25) and special characters (20) suggest suspicious formatting often used to draw attention in phishing emails.",
+    "recommended_actions": "Block the sender domain, do not click on any links, mark the email as phishing in the email client, and report it to the security team for further analysis."
+}

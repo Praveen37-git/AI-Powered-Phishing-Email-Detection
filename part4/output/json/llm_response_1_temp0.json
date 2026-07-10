@@ -1,0 +1,7 @@
+{
+    "prediction_label": "Phishing",
+    "confidence_level": "High",
+    "top_reason": "The email contains multiple URLs (3) including one with HTTP, which is often used in phishing attempts to redirect users to malicious sites.",
+    "second_reason": "The high number of uppercase letters (25) and special characters (20) in a relatively short subject and body length can indicate an attempt to grab attention, a common phishing tactic.",
+    "recommended_actions": "Block the sender domain, do not click on any links, report the email to the security team, and educate users about recognizing phishing emails."
+}

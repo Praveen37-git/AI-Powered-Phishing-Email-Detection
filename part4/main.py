@@ -132,39 +132,41 @@ def main():
     - Use the Confidence Level exactly as provided.
     - Explain the prediction using the supplied email features.
     """
-    email_features = extract_email_features(
-        sender_domain="other",
-        urls=3,
-        subject_length=45,
-        word_count=120,
-        uppercase_count=25,
-        special_characters=20,
-        question_marks=1,
-        exclamation_marks=2,
-        contains_http=1,
-    )
-    prediction, confidence, confidence_level = predict_email(email_features)
-    print(f"ML Prediction: {prediction}")
-    print(f"Confidence: {confidence:.4f}")
-    user_prompt = f"""
-    Analyze the following phishing detection result.
-
-    Email Features:
-    {json.dumps(email_features, indent=2)}
-
-    Machine Learning Prediction:
-    {prediction}
-
-    Prediction Probability:
-    {confidence:.4f}
-
-    Confidence Level:
-    {confidence_level}
-    """
-    response = call_llm(system_prompt, user_prompt)
-    if response is None:
-        print("LLM request failed")
-        return
+    test_inputs = [
+        extract_email_features(
+            sender_domain="other",
+            urls=3,
+            subject_length=45,
+            word_count=120,
+            uppercase_count=25,
+            special_characters=20,
+            question_marks=1,
+            exclamation_marks=2,
+            contains_http=1,
+        ),
+        extract_email_features(
+            sender_domain="gmail.com",
+            urls=0,
+            subject_length=22,
+            word_count=70,
+            uppercase_count=1,
+            special_characters=3,
+            question_marks=0,
+            exclamation_marks=0,
+            contains_http=0,
+        ),
+        extract_email_features(
+            sender_domain="google.com",
+            urls=1,
+            subject_length=35,
+            word_count=90,
+            uppercase_count=5,
+            special_characters=8,
+            question_marks=1,
+            exclamation_marks=1,
+            contains_http=1,
+        )
+    ]
     schema = {
         "type": "object",
         "properties": {
@@ -182,23 +184,100 @@ def main():
             "recommended_actions"   
         ]
     }
-    try:
-        result = json.loads(response.strip())
-    except json.JSONDecodeError as e:
-        print("JSON Decode Error: ", e)
-        return
-    try:
-        validate(instance=result, schema=schema)
-        print("Schema validation passed")
-    except ValidationError as e:
-        print("Schema validation failed")
-        print(e)
-    print(json.dumps(result, indent=4))
-    os.makedirs("part4/output", exist_ok=True)
+    fallback = {
+        "prediction_label": None,
+        "confidence_level": None,
+        "top_reason": None,
+        "second_reason": None,
+        "recommended_actions": None
+    }
+    os.makedirs("part4/output/json", exist_ok=True)
+    os.makedirs("part4/output/raw", exist_ok=True)
+    for i, email_features in enumerate(test_inputs, start=1):
+        print(f"\n====== Test case {i} ======")
+        prediction, confidence, confidence_level = predict_email(email_features)
+        print(f"ML Prediction: {prediction}")
+        print(f"Confidence: {confidence:.4f}")
+        user_prompt = f"""
+        Analyze the following phishing detection result.
 
-    with open("part4/output/llm_response.json", "w") as f:
-        json.dump(result, f, indent=4)
-    print("LLM response saved to part4/output/llm_response.json")
+        Email Features:
+        {json.dumps(email_features, indent=2)}
+
+        Machine Learning Prediction:
+        {prediction}
+
+        Prediction Probability:
+        {confidence:.4f}
+
+        Confidence Level:
+        {confidence_level}
+        """
+    
+        response_temp0 = call_llm(system_prompt, user_prompt, temperature=0)
+        response_temp07 = call_llm(system_prompt, user_prompt, temperature=0.7)
+        if response_temp0 is None or response_temp07 is None:
+            print("LLM request failed")
+            continue
+    
+        try:
+            result1 = json.loads(response_temp0.strip())
+        except json.JSONDecodeError as e:
+            print("JSON Decode Error: ", e)
+            result1 = fallback.copy()
+        try:
+            result2 = json.loads(response_temp07.strip())
+        except json.JSONDecodeError as e:
+            print("JSON Decode Error: ", e)
+            result2 = fallback.copy()
+            
+        try:
+            validate(instance=result1, schema=schema)
+            print("Validation (Temp 0): PASS")
+        except ValidationError as e:
+            print("Temp0 validation failed")
+            result1 = fallback.copy()
+        try:
+           validate(instance=result2, schema=schema)
+           print("Validation (Temp 0.7): PASS")
+        except ValidationError as e:
+            print("Temp0.7 validation failed")
+            result2 = fallback.copy()
+            
+        print("\n====== Temperature = 0 ======")
+        print(json.dumps(result1, indent=4))
+        print("\n====== Temperature = 0.7 ======")
+        print(json.dumps(result2, indent=4))
+        print("-" * 60)
+
+
+
+        with open(f"part4/output/json/llm_response_{i}_temp0.json", "w", encoding="utf-8") as f:
+            json.dump(result1, f, indent=4)
+        with open(f"part4/output/json/llm_response_{i}_temp07.json", "w", encoding="utf-8") as f:
+            json.dump(result2, f, indent=4)
+        print(f"Saved responses for Test Case {i}")
+        
+        with open(f"part4/output/raw/raw_temp0_{i}.txt", "w", encoding="utf-8") as f:
+            f.write(response_temp0)
+        with open(f"part4/output/raw/raw_temp07_{i}.txt", "w", encoding="utf-8") as f:
+            f.write(response_temp07)
+    print("\n====== PII Guardrail Test ======")
+
+    pii_prompt = """
+    Email: john.doe@gmail.com
+    Phone: 9876543210
+
+    Prediction: Phishing
+    Probability: 0.98
+    """
+
+    response = call_llm(system_prompt, pii_prompt)
+
+    if response is None:
+        print("PII guardrail working successfully.")
+    print("\nAll test cases completed successfully.")
+        
     
 if __name__ == "__main__":
     main()

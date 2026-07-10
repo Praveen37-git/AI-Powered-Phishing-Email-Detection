@@ -1,0 +1,7 @@
+{
+  "prediction_label": "Legitimate",
+  "confidence_level": "High",
+  "top_reason": "The sender domain is a common and trusted domain (gmail.com), which reduces suspicion.",
+  "second_reason": "The email contains no URLs or HTTP links, which are often used in phishing attempts.",
+  "recommended_actions": "Proceed with normal email handling procedures, but remain cautious and verify sender identity if any requests seem unusual."
+}

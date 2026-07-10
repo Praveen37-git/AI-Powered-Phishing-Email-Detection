@@ -1,0 +1,7 @@
+{
+    "prediction_label": "Phishing",
+    "confidence_level": "Medium",
+    "top_reason": "The email contains a URL with 'http' which is often used in phishing attempts to lure users to malicious sites.",
+    "second_reason": "The presence of multiple special characters and a question mark in the subject and body can indicate an attempt to grab attention, common in phishing emails.",
+    "recommended_actions": "Verify the sender's authenticity despite the legitimate domain, avoid clicking on the URL, and report the email to your IT or security team for further analysis."
+}

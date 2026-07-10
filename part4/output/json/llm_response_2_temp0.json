@@ -1,0 +1,7 @@
+{
+    "prediction_label": "Legitimate",
+    "confidence_level": "High",
+    "top_reason": "The email contains no URLs and no HTTP links, reducing the risk of phishing attempts.",
+    "second_reason": "The sender domain is a common and trusted domain (gmail.com), and the email has a moderate subject length and word count, indicating normal communication.",
+    "recommended_actions": "Proceed with normal email handling procedures but remain cautious of any unexpected requests or attachments."
+}

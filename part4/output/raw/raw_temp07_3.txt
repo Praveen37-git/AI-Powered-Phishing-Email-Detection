@@ -1,0 +1,7 @@
+{
+  "prediction_label": "Phishing",
+  "confidence_level": "Medium",
+  "top_reason": "The email contains a URL with 'http' which is often used in phishing attempts to redirect to malicious sites.",
+  "second_reason": "The subject length of 35 and presence of special characters and uppercase letters indicate an attempt to grab attention, a common trait in phishing emails.",
+  "recommended_actions": "Verify the URL by hovering over the link without clicking, check for any inconsistencies in the sender's domain, and avoid clicking on suspicious links. Report the email to your IT or security team."
+}
